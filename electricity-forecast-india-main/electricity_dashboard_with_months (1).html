@@ -1,0 +1,306 @@
+
+<h2 class="sr-only">Electricity consumption forecasting dashboard for Indian states with monthly bill breakdown cards, bar chart, year-over-year trend, and state ranking.</h2>
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+.dash { padding: 1.5rem 0; font-family: var(--font-sans); }
+.header h1 { font-size: 18px; font-weight: 500; color: var(--color-text-primary); }
+.header p { font-size: 13px; color: var(--color-text-secondary); margin-top: 4px; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px; margin: 1.25rem 0; align-items: flex-end; }
+.ctrl-group { display: flex; flex-direction: column; gap: 4px; }
+.ctrl-group label { font-size: 12px; color: var(--color-text-secondary); }
+select { font-size: 13px; padding: 6px 10px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-primary); cursor: pointer; }
+.metric-row { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 1.25rem; }
+.metric { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px 14px; }
+.metric .mlabel { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 5px; }
+.metric .mval { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
+.metric .msub { font-size: 11px; color: var(--color-text-tertiary); margin-top: 2px; }
+.metric.peak .mval { color: #a32d2d; }
+.metric.low .mval { color: #185fa5; }
+.month-grid { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 8px; margin-bottom: 1.25rem; }
+.month-card { border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary); padding: 10px 8px; text-align: center; cursor: default; transition: border-color 0.15s; }
+.month-card:hover { border-color: var(--color-border-primary); }
+.month-card .mn { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: 4px; letter-spacing: 0.02em; }
+.month-card .mv { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
+.month-card .mu { font-size: 10px; color: var(--color-text-tertiary); margin-top: 2px; }
+.month-card .mbar { height: 4px; border-radius: 2px; background: var(--color-border-tertiary); margin-top: 6px; overflow: hidden; }
+.month-card .mbar-fill { height: 100%; border-radius: 2px; background: #5c8eff; }
+.month-card.is-peak { background: #fff0f0; border-color: #f09595; }
+.month-card.is-peak .mn { color: #a32d2d; }
+.month-card.is-peak .mv { color: #a32d2d; }
+.month-card.is-peak .mbar-fill { background: #c0392b; }
+.month-card.is-low { background: #e6f1fb; border-color: #85b7eb; }
+.month-card.is-low .mn { color: #185fa5; }
+.month-card.is-low .mv { color: #185fa5; }
+.month-card.is-low .mbar-fill { background: #378add; }
+.season-row { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-bottom: 1.25rem; }
+.season-card { border-radius: var(--border-radius-md); padding: 12px 14px; border: 0.5px solid var(--color-border-tertiary); }
+.season-card .sl { font-size: 11px; font-weight: 500; margin-bottom: 3px; }
+.season-card .sv { font-size: 18px; font-weight: 500; }
+.season-card .sm { font-size: 10px; color: var(--color-text-secondary); margin-top: 2px; }
+.summer { background: #fff8f0; } .summer .sl { color: #993c1d; } .summer .sv { color: #d85a30; }
+.monsoon { background: #e6f1fb; } .monsoon .sl { color: #185fa5; } .monsoon .sv { color: #378add; }
+.winter { background: #eeedfe; } .winter .sl { color: #3c3489; } .winter .sv { color: #534ab7; }
+.chart-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+.chart-card h3 { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 2px; }
+.chart-card .csub { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 1rem; }
+.two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 12px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--color-text-secondary); }
+.legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.state-table { width: 100%; font-size: 12px; border-collapse: collapse; table-layout: fixed; }
+.state-table th { font-size: 11px; color: var(--color-text-secondary); font-weight: 500; text-align: left; padding: 6px 6px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.state-table td { padding: 7px 6px; border-bottom: 0.5px solid var(--color-border-tertiary); color: var(--color-text-primary); word-break: break-word; }
+.state-table tr:last-child td { border-bottom: none; }
+.bar-mini { height: 5px; border-radius: 2px; background: #5c8eff; display: inline-block; vertical-align: middle; }
+</style>
+
+<div class="dash">
+  <div class="header">
+    <h1>Electricity consumption forecasting — Indian states</h1>
+    <p>Multi-factor monthly bill analysis · ML-based forecasting</p>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl-group">
+      <label>State</label>
+      <select id="stateSelect">
+        <option>Tamil Nadu</option><option>Maharashtra</option>
+        <option>Uttar Pradesh</option><option>Rajasthan</option>
+        <option>Gujarat</option><option>Karnataka</option>
+        <option>Andhra Pradesh</option><option>West Bengal</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <label>Year</label>
+      <select id="yearSelect">
+        <option>2023</option><option>2022</option>
+        <option>2021</option><option>2020</option>
+        <option>2019</option><option>2024 (forecast)</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <label>Metric</label>
+      <select id="viewSelect">
+        <option value="bill">Monthly bill (₹)</option>
+        <option value="units">Units consumed (kWh)</option>
+        <option value="consumption">Grid consumption (MU)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="metric-row" id="metricRow"></div>
+
+  <div class="month-grid" id="monthGrid"></div>
+
+  <div class="season-row" id="seasonRow"></div>
+
+  <div class="chart-card">
+    <h3 id="chartTitle">Monthly electricity bill</h3>
+    <div class="csub" id="chartSub">Peak month in red · Lowest month in blue</div>
+    <div style="position:relative;width:100%;height:260px;">
+      <canvas id="mainChart" role="img" aria-label="Monthly electricity bill bar chart for selected state and year"></canvas>
+    </div>
+    <div class="legend">
+      <span class="legend-item"><span class="legend-dot" style="background:#a32d2d;"></span>Peak month</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#378add;"></span>Lowest month</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#5c8eff;"></span>Normal months</span>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="chart-card">
+      <h3>Year-over-year comparison</h3>
+      <div class="csub">All years · selected state</div>
+      <div style="position:relative;width:100%;height:200px;">
+        <canvas id="yoyChart" role="img" aria-label="Year over year monthly bill line chart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>State ranking · 2023</h3>
+      <div class="csub">Annual avg monthly bill</div>
+      <table class="state-table" id="stateTable"></table>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const SEASONAL = [0.85,0.87,0.95,1.10,1.25,1.20,1.05,1.00,0.95,0.90,0.88,0.83];
+const STATES = {
+  'Tamil Nadu':     {base:850,  growth:0.055,rate:[5.8,6.5]},
+  'Maharashtra':    {base:1100, growth:0.06, rate:[5.5,7.0]},
+  'Uttar Pradesh':  {base:950,  growth:0.07, rate:[5.2,6.8]},
+  'Rajasthan':      {base:600,  growth:0.065,rate:[5.6,7.2]},
+  'Gujarat':        {base:780,  growth:0.058,rate:[5.4,7.0]},
+  'Karnataka':      {base:720,  growth:0.05, rate:[5.7,6.9]},
+  'Andhra Pradesh': {base:680,  growth:0.06, rate:[5.5,7.1]},
+  'West Bengal':    {base:620,  growth:0.05, rate:[5.3,6.7]},
+};
+
+const rng = (seed) => { let s=seed; return ()=>{ s=(s*9301+49297)%233280; return s/233280; }; };
+
+function genData(state, year) {
+  const info = STATES[state];
+  const isForecast = year==='2024 (forecast)';
+  const yr = isForecast ? 2024 : parseInt(year);
+  const yIdx = yr - 2019;
+  const r = rng(Object.keys(STATES).indexOf(state)*100 + yIdx*13);
+  return MONTHS.map((_,m) => {
+    const base = info.base * Math.pow(1+info.growth, yIdx);
+    const covid = (yr===2020 && m>=3 && m<=5) ? 0.88 : 1.0;
+    const noise = 0.97 + r()*0.06;
+    const ff = isForecast ? (1+info.growth) : 1;
+    const mu = base * SEASONAL[m] * covid * noise * ff;
+    const rate = info.rate[0] + r()*(info.rate[1]-info.rate[0]);
+    const units = mu/10000 + 80 + r()*40;
+    return { mu: Math.round(mu*10)/10, units: Math.round(units*10)/10, bill: Math.round(units*rate) };
+  });
+}
+
+function getVals(data, view) {
+  return data.map(d => view==='bill' ? d.bill : view==='units' ? d.units : d.mu);
+}
+
+let mainChart, yoyChart;
+
+function renderMetrics(data) {
+  const bills = data.map(d=>d.bill);
+  const maxI = bills.indexOf(Math.max(...bills));
+  const minI = bills.indexOf(Math.min(...bills));
+  const annual = bills.reduce((a,b)=>a+b,0);
+  const avgU = Math.round(data.reduce((a,d)=>a+d.units,0)/12);
+  document.getElementById('metricRow').innerHTML =
+    `<div class="metric peak"><div class="mlabel">Peak month</div><div class="mval">${MONTHS[maxI]}</div><div class="msub">₹${bills[maxI].toLocaleString('en-IN')} bill</div></div>
+     <div class="metric low"><div class="mlabel">Lowest month</div><div class="mval">${MONTHS[minI]}</div><div class="msub">₹${bills[minI].toLocaleString('en-IN')} bill</div></div>
+     <div class="metric"><div class="mlabel">Annual total</div><div class="mval">₹${Math.round(annual).toLocaleString('en-IN')}</div><div class="msub">Household estimate</div></div>
+     <div class="metric"><div class="mlabel">Avg monthly units</div><div class="mval">${avgU}</div><div class="msub">kWh per household</div></div>`;
+}
+
+function renderMonthGrid(data, view) {
+  const vals = getVals(data, view);
+  const maxV = Math.max(...vals);
+  const minV = Math.min(...vals);
+  const prefix = view==='bill' ? '₹' : '';
+  const suffix = view==='units' ? ' kWh' : view==='consumption' ? ' MU' : '';
+  const subLabel = view==='bill' ? 'bill' : view==='units' ? 'kWh' : 'MU';
+  const seasonLabel = ['Winter','Winter','Summer','Summer','Summer','Summer','Monsoon','Monsoon','Monsoon','Winter','Winter','Winter'];
+
+  document.getElementById('monthGrid').innerHTML = vals.map((v,i) => {
+    const pct = Math.round((v - minV) / (maxV - minV) * 100);
+    const isPeak = v === maxV;
+    const isLow  = v === minV;
+    const cls = isPeak ? 'month-card is-peak' : isLow ? 'month-card is-low' : 'month-card';
+    const display = view==='bill' ? `₹${v.toLocaleString('en-IN')}` : `${Math.round(v*10)/10}`;
+    return `<div class="${cls}">
+      <div class="mn">${MONTHS[i]}</div>
+      <div class="mv">${display}</div>
+      <div class="mu">${seasonLabel[i]}</div>
+      <div class="mbar"><div class="mbar-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderSeasons(data) {
+  const summer  = Math.round([2,3,4,5].map(i=>data[i].bill).reduce((a,b)=>a+b)/4);
+  const monsoon = Math.round([6,7,8].map(i=>data[i].bill).reduce((a,b)=>a+b)/3);
+  const winter  = Math.round([9,10,11,0,1].map(i=>data[i].bill).reduce((a,b)=>a+b)/5);
+  document.getElementById('seasonRow').innerHTML =
+    `<div class="season-card summer"><div class="sl">Summer avg bill</div><div class="sv">₹${summer.toLocaleString('en-IN')}</div><div class="sm">Mar · Apr · May · Jun</div></div>
+     <div class="season-card monsoon"><div class="sl">Monsoon avg bill</div><div class="sv">₹${monsoon.toLocaleString('en-IN')}</div><div class="sm">Jul · Aug · Sep</div></div>
+     <div class="season-card winter"><div class="sl">Winter avg bill</div><div class="sv">₹${winter.toLocaleString('en-IN')}</div><div class="sm">Oct · Nov · Dec · Jan · Feb</div></div>`;
+}
+
+function renderMain(data, view, state, year) {
+  const vals = getVals(data, view);
+  const maxV = Math.max(...vals);
+  const minV = Math.min(...vals);
+  const colors = vals.map(v => v===maxV ? '#c0392b' : v===minV ? '#378add' : '#5c8eff');
+  const prefix = view==='bill' ? '₹' : '';
+  const suffix = view==='units' ? ' kWh' : view==='consumption' ? ' MU' : '';
+  const label = view==='bill' ? 'Monthly bill (₹)' : view==='units' ? 'Units (kWh)' : 'Consumption (MU)';
+  document.getElementById('chartTitle').textContent = `${label} — ${state} (${year})`;
+  if (mainChart) mainChart.destroy();
+  mainChart = new Chart(document.getElementById('mainChart'), {
+    type: 'bar',
+    data: { labels: MONTHS, datasets: [{ label, data: vals.map(v=>Math.round(v)), backgroundColor: colors, borderRadius: 4, borderSkipped: false }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${prefix}${ctx.raw.toLocaleString('en-IN')}${suffix}` } } },
+      scales: {
+        x: { ticks: { autoSkip: false, maxRotation: 0, font: { size: 11 } }, grid: { display: false } },
+        y: { ticks: { font: { size: 11 }, callback: v => prefix + Math.round(v).toLocaleString('en-IN') }, grid: { color: 'rgba(128,128,128,0.1)' } }
+      }
+    }
+  });
+}
+
+function renderYoY(state) {
+  const years = ['2019','2020','2021','2022','2023'];
+  const palette = ['#9FE1CB','#FAC775','#B5D4F4','#F4C0D1','#AFA9EC'];
+  const datasets = years.map((yr,i) => ({
+    label: yr,
+    data: genData(state,yr).map(d=>Math.round(d.bill)),
+    borderColor: palette[i], backgroundColor: 'transparent',
+    borderWidth: 2, pointRadius: 2, tension: 0.3
+  }));
+  if (yoyChart) yoyChart.destroy();
+  yoyChart = new Chart(document.getElementById('yoyChart'), {
+    type: 'line',
+    data: { labels: MONTHS, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 }, padding: 8 } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ₹${ctx.raw.toLocaleString('en-IN')}` } }
+      },
+      scales: {
+        x: { ticks: { autoSkip: false, maxRotation: 0, font: { size: 10 } }, grid: { display: false } },
+        y: { ticks: { font: { size: 10 }, callback: v => '₹'+Math.round(v/100)*100 }, grid: { color: 'rgba(128,128,128,0.1)' } }
+      }
+    }
+  });
+}
+
+function renderStateTable(selectedState) {
+  const ranks = Object.keys(STATES).map(st => {
+    const d = genData(st,'2023');
+    const avg = Math.round(d.reduce((a,x)=>a+x.bill,0)/12);
+    const peak = MONTHS[d.map(x=>x.bill).indexOf(Math.max(...d.map(x=>x.bill)))];
+    return { st, avg, peak };
+  }).sort((a,b)=>b.avg-a.avg);
+  const maxA = ranks[0].avg;
+  let html = '<thead><tr><th style="width:20px">#</th><th>State</th><th style="width:110px">Avg bill</th><th style="width:32px">Peak</th></tr></thead><tbody>';
+  ranks.forEach((row,i) => {
+    const w = Math.round((row.avg/maxA)*60);
+    const sel = row.st === selectedState;
+    html += `<tr style="${sel?'background:var(--color-background-secondary)':''}">
+      <td style="color:var(--color-text-tertiary);font-size:11px">${i+1}</td>
+      <td style="font-weight:${sel?'500':'400'};font-size:12px">${row.st}</td>
+      <td style="font-size:12px">₹${row.avg.toLocaleString('en-IN')} <span class="bar-mini" style="width:${w}px"></span></td>
+      <td style="color:var(--color-text-secondary);font-size:11px">${row.peak}</td>
+    </tr>`;
+  });
+  html += '</tbody>';
+  document.getElementById('stateTable').innerHTML = html;
+}
+
+function update() {
+  const state = document.getElementById('stateSelect').value;
+  const year  = document.getElementById('yearSelect').value;
+  const view  = document.getElementById('viewSelect').value;
+  const data  = genData(state, year);
+  renderMetrics(data);
+  renderMonthGrid(data, view);
+  renderSeasons(data);
+  renderMain(data, view, state, year);
+  renderYoY(state);
+  renderStateTable(state);
+}
+
+['stateSelect','yearSelect','viewSelect'].forEach(id =>
+  document.getElementById(id).addEventListener('change', update)
+);
+update();
+</script>
